@@ -40,7 +40,3 @@ No se requiere instalación, servidor ni herramientas de compilación.
 ## Alcance del modelo
 
 La aplicación es un modelo visual educativo en 2D. Las distancias, tamaños y velocidades en pantalla están simplificados para facilitar la visualización; no representan las proporciones astronómicas reales.
-
-## Licencia
-
-Este proyecto no especifica una licencia. Añade un archivo `LICENSE` si quieres permitir formalmente que otras personas reutilicen o modifiquen el código.
