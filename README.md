@@ -39,4 +39,4 @@ No se requiere instalación, servidor ni herramientas de compilación.
 
 ## Alcance del modelo
 
-La aplicación es un modelo visual educativo en 2D. Las distancias, tamaños y velocidades en pantalla están simplificados para facilitar la visualización; no representan las proporciones astronómicas reales.
+https://sistema-solar-2d.vercel.app
