@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Solar 2D - Estilo Ilustrado</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            background-color: #0b1329;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: grab;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            background: #0b1329;
+            display: block;
+        }
+
+        /* Panel de Controles Superiores */
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 10px 18px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        #controls label {
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+        #controls input[type="range"] {
+            cursor: pointer;
+        }
+        #controls button {
+            background: #facc15;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #000;
+            transition: background 0.2s;
+        }
+        #controls button:hover {
+            background: #eab308;
+        }
+
+        #hint-overlay {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #cbd5e1;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        /* Panel Lateral de Información (Ocupa el 50% de la pantalla) */
+        #info-panel {
+            position: absolute;
+            right: -50vw;
+            top: 0;
+            width: 50vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.96);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 35px 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+            z-index: 20;
+            backdrop-filter: blur(15px);
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            #info-panel {
+                width: 100vw;
+                right: -100vw;
+            }
+        }
+
+        #info-panel.visible {
+            right: 0;
+        }
+
+        #info-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        #info-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #aaa;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .close-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .info-header {
+            margin-top: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+        .info-header h2 {
+            margin: 0 0 5px 0;
+            color: #facc15;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .info-header .subtitle {
+            font-size: 12px;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .info-body {
+            flex-grow: 1;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+        .info-body p {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #facc15;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-label {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .facts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .fact-card-item {
+            background: rgba(56, 189, 248, 0.07);
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            border-left: 4px solid #38bdf8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            color: #e0f2fe;
+            font-size: 13.5px;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .fact-card-item:hover {
+            background: rgba(56, 189, 248, 0.12);
+            transform: translateX(3px);
+        }
+
+        .fact-number {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            font-weight: 700;
+            font-size: 11px;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .panel-footer-hint {
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <div id="controls">
+            <label for="speedRange">Velocidad: <span id="speedValue">1.0</span>x</label>
+            <input type="range" id="speedRange" min="0" max="5" step="0.1" value="1">
+            <button id="pauseBtn">Pausar</button>
+        </div>
+
+        <div id="hint-overlay">Haz clic en cualquier planeta o luna para ver su información 🪐 | Arrastra o usa Zoom</div>
+
+        <canvas id="solarSystem"></canvas>
+    </div>
+
+    <div id="info-panel">
+        <button class="close-btn" id="closeBtn" title="Cerrar">&times;</button>
+        <div>
+            <div class="info-header">
+                <h2 id="infoTitle">Astro</h2>
+                <div class="subtitle" id="infoSubtitle">Categoría</div>
+            </div>
+            <div class="info-body">
+                <p id="infoDesc">Explicación...</p>
+
+                <div class="section-title">📊 Características Principales</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Tipo</span>
+                        <span class="stat-value" id="statType">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Radio Medio</span>
+                        <span class="stat-value" id="statRadius">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Distancia al Sol / Padre</span>
+                        <span class="stat-value" id="statDistance">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Temperatura Promedio</span>
+                        <span class="stat-value" id="statTemp">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Duración del Día</span>
+                        <span class="stat-value" id="statDay">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Duración del Año / Órbita</span>
+                        <span class="stat-value" id="statYear">-</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Satélites (Lunas)</span>
+                        <span class="stat-value" id="statMoons">-</span>
+                    </div>
+                </div>
+
+                <div class="section-title">💡 7 Datos Curiosos</div>
+                <div class="facts-container" id="factsContainer"></div>
+            </div>
+        </div>
+        <div class="panel-footer-hint">Sistema Solar Interactivo - Modelo Educativo 2D</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('solarSystem');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const speedRange = document.getElementById('speedRange');
+        const speedValue = document.getElementById('speedValue');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const infoPanel = document.getElementById('info-panel');
+        const closeBtn = document.getElementById('closeBtn');
+
+        const infoTitle = document.getElementById('infoTitle');
+        const infoSubtitle = document.getElementById('infoSubtitle');
+        const infoDesc = document.getElementById('infoDesc');
+        const statType = document.getElementById('statType');
+        const statRadius = document.getElementById('statRadius');
+        const statDistance = document.getElementById('statDistance');
+        const statTemp = document.getElementById('statTemp');
+        const statDay = document.getElementById('statDay');
+        const statYear = document.getElementById('statYear');
+        const statMoons = document.getElementById('statMoons');
+        const factsContainer = document.getElementById('factsContainer');
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let zoom = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        container.addEventListener('mousedown', (e) => {
+            if (e.target === canvas) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomIntensity = 0.1;
+            if (e.deltaY < 0) zoom *= (1 + zoomIntensity);
+            else zoom /= (1 + zoomIntensity);
+            zoom = Math.max(0.3, Math.min(zoom, 5.0));
+        }, { passive: false });
+
+        let globalSpeed = 1.0;
+        let isPaused = false;
+        let selectedTarget = null;
+
+        // Base de Datos Completa con Planetas y sus Lunas Principales
+        const celestialBodies = [
+            // ESTRELLA Y PLANETAS
+            {
+                id: 'sun', name: 'El Sol', subtitle: 'Estrella Central (Enana Amarilla)',
+                description: 'Es una esfera gigante de plasma caliente impulsada por reacciones de fusión nuclear en su núcleo. Representa más del 99.8% de toda la masa del Sistema Solar.',
+                type: 'Estrella (Tipo G2V)', realRadius: '696,340 km', realDistance: '0 km (Centro)',
+                temp: '5,500 °C (Superficie) / 15,000,000 °C (Núcleo)', dayDuration: '25 a 35 días', yearDuration: '230 millones de años', moons: '0 (Sostiene planetas)',
+                facts: [
+                    'Contiene el 99.86% de toda la masa total de nuestro Sistema Solar.',
+                    'Dentro del Sol cabrían aproximadamente 1.3 millones de planetas Tierra.',
+                    'La luz emitida por el Sol tarda unos 8 minutos y 20 segundos en llegar a la Tierra.',
+                    'Produce energía fusionando unos 600 millones de toneladas de hidrógeno por segundo.',
+                    'Aunque parece de un tono amarillo/anaranjado desde la Tierra por la atmósfera, en el espacio es blanco.',
+                    'El Sol gira sobre su propio eje a distintas velocidades: 25 días en el ecuador y unos 35 en los polos.',
+                    'Está a mitad de su vida útil y continuará brillando de forma estable durante unos 5,000 millones de años más.'
+                ],
+                radius: 42, distance: 0, baseSpeed: 0, parentId: null, angle: 0, x: 0, y: 0, typeDraw: 'sun'
+            },
+            {
+                id: 'mercurio', name: 'Mercurio', subtitle: 'Planeta Interior',
+                description: 'El planeta más pequeño y más cercano al Sol. Casi no posee atmósfera para retener el calor, sufriendo variaciones extremas de temperatura.',
+                type: 'Planeta Rocoso', realRadius: '2,439 km', realDistance: '57.9 millones de km',
+                temp: '-180 °C a 430 °C', dayDuration: '59 días terrestres', yearDuration: '88 días terrestres', moons: '0',
+                facts: [
+                    'Es el planeta más rápido del Sistema Solar, viajando a casi 47 km/s.',
+                    'A pesar de ser el más cercano al Sol, no es el planeta más caliente.',
+                    'Su superficie está completamente cubierta de cráteres de impacto.',
+                    'Su núcleo de hierro representa cerca del 85% de todo el radio del planeta.',
+                    'Sufre los cambios de temperatura más drásticos del Sistema Solar.',
+                    'Se ha detectado hielo de agua en el fondo de sus cráteres polares en sombra perpetua.',
+                    'Verías al Sol tres veces más grande en el cielo que desde la Tierra.'
+                ],
+                radius: 7, distance: 90, baseSpeed: 0.035, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'mercury'
+            },
+            {
+                id: 'venus', name: 'Venus', subtitle: 'El Planeta Caliente',
+                description: 'Casi del mismo tamaño que la Tierra. Posee una densísima atmósfera de CO2 y nubes de ácido sulfúrico con un brutal efecto invernadero.',
+                type: 'Planeta Rocoso', realRadius: '6,051 km', realDistance: '108.2 millones de km',
+                temp: '465 °C', dayDuration: '243 días terrestres', yearDuration: '225 días terrestres', moons: '0',
+                facts: [
+                    'Es el planeta más caliente de todos gracias a un devastador efecto invernadero.',
+                    'Un día en Venus es más largo que un año venusiano.',
+                    'Gira en dirección opuesta a casi todos los planetas (el Sol sale por el oeste).',
+                    'La presión en su superficie es 90 veces mayor que en la Tierra.',
+                    'Posee miles de volcanes y se sospecha que varios siguen activos.',
+                    'Llueve ácido sulfúrico concentrado que se evapora antes de tocar el suelo.',
+                    'Es el objeto más brillante en el cielo nocturno después de la Luna.'
+                ],
+                radius: 11, distance: 145, baseSpeed: 0.025, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'venus'
+            },
+            {
+                id: 'tierra', name: 'Tierra', subtitle: 'Nuestro Hogar',
+                description: 'El único mundo conocido en el universo que alberga vida. Cuenta con una atmósfera rica en nitrógeno y oxígeno, y océanos de agua líquida.',
+                type: 'Planeta Rocoso', realRadius: '6,371 km', realDistance: '149.6 millones de km',
+                temp: '15 °C', dayDuration: '24 horas', yearDuration: '365.25 días', moons: '1 (La Luna)',
+                facts: [
+                    'Es el único planeta conocido que posee agua líquida permanente.',
+                    'Su potente campo magnético nos protege de la radiación solar.',
+                    'Es el planeta más denso de todo el Sistema Solar.',
+                    'Sus placas tectónicas remodelan los continentes continuamente.',
+                    'Casi el 99% del oro del planeta reside en el núcleo inaccesible.',
+                    'Está achatada en los polos y abultada en el ecuador.',
+                    'Más del 95% del fondo marino sigue inexplorado.'
+                ],
+                radius: 12, distance: 210, baseSpeed: 0.018, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'earth'
+            },
+            {
+                id: 'marte', name: 'Marte', subtitle: 'El Planeta Rojo',
+                description: 'Llamado así por el óxido de hierro en su suelo. Tuvo agua líquida en el pasado y actualmente posee casquetes polares de hielo.',
+                type: 'Planeta Rocoso', realRadius: '3,389 km', realDistance: '227.9 millones de km',
+                temp: '-60 °C', dayDuration: '24.6 horas', yearDuration: '687 días', moons: '2 (Fobos y Deimos)',
+                facts: [
+                    'Su color rojo proviene del óxido de hierro (herrumbre) de su superficie.',
+                    'Alberga el volcán más grande conocido: el Monte Olimpo (25 km de alto).',
+                    'Posee el gigantesco sistema de cañones Valles Marineris.',
+                    'Tiene tormentas de polvo globales que duran semanas.',
+                    'Su atmósfera es delgada y compuesta por 95% de dióxido de carbono.',
+                    'Su luna Fobos se destruirá creando un anillo dentro de millones de años.',
+                    'Las puestas de sol en Marte son de un asombroso color azul.'
+                ],
+                radius: 9, distance: 280, baseSpeed: 0.014, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'mars'
+            },
+            {
+                id: 'jupiter', name: 'Júpiter', subtitle: 'Gigante Gaseoso',
+                description: 'El planeta más masivo del sistema solar, compuesto de hidrógeno y helio. Actúa como un escudo gravitacional para los planetas interiores.',
+                type: 'Gigante Gaseoso', realRadius: '69,911 km', realDistance: '778.5 millones de km',
+                temp: '-110 °C', dayDuration: '9.9 horas', yearDuration: '11.8 años', moons: '95 confirmadas',
+                facts: [
+                    'Gira tan rápido que su día dura menos de 10 horas.',
+                    'Su Gran Mancha Roja es una tormenta más grande que la Tierra.',
+                    'Tiene el campo magnético más potente entre todos los planetas.',
+                    'Actúa como escudo desviando asteroides peligrosos lejos de la Tierra.',
+                    'Posee un sistema de anillos oscuros y tenues.',
+                    'Su luna Ganímedes es más grande que el planeta Mercurio.',
+                    'Si fuera 80 veces más masivo se habría convertido en una estrella.'
+                ],
+                radius: 22, distance: 375, baseSpeed: 0.008, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'jupiter'
+            },
+            {
+                id: 'saturno', name: 'Saturno', subtitle: 'El Señor de los Anillos',
+                description: 'Famoso por sus deslumbrantes anillos de hielo y rocas. Es el único planeta con una densidad tan baja que flotaría en agua.',
+                type: 'Gigante Gaseoso', realRadius: '58,232 km', realDistance: '1,434 millones de km',
+                temp: '-140 °C', dayDuration: '10.7 horas', yearDuration: '29.5 años', moons: '146 confirmadas',
+                facts: [
+                    'Es menos denso que el agua; flotaría en una piscina suficientemente grande.',
+                    'Sus anillos miden miles de km de ancho pero solo 10 metros de grosor.',
+                    'Tiene una tormenta en forma de hexágono perfecto en su polo norte.',
+                    'Es el planeta con más lunas del Sistema Solar.',
+                    'Su luna Titán tiene lagos y ríos de metano líquido.',
+                    'Sus anillos pierden material lentamente y acabarán desapareciendo.',
+                    'Tarda únicamente 10.7 horas en dar un giro completo.'
+                ],
+                radius: 18, distance: 475, baseSpeed: 0.006, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'saturn'
+            },
+            {
+                id: 'urano', name: 'Urano', subtitle: 'Gigante de Hielo',
+                description: 'Planeta helado compuesto de agua, amoníaco y metano. Presenta un hermoso tono cian y gira inclinado casi 98 grados.',
+                type: 'Gigante de Hielo', realRadius: '25,362 km', realDistance: '2,871 millones de km',
+                temp: '-195 °C', dayDuration: '17.2 horas', yearDuration: '84 años', moons: '28 confirmadas',
+                facts: [
+                    'Rota de costado con una inclinación extrema de 98 grados.',
+                    'Registra las temperaturas atmosféricas más frías del Sistema Solar (-224 °C).',
+                    'Fue el primer planeta descubierto con un telescopio (1781).',
+                    'Sus estaciones duran 21 años terrestres seguidos.',
+                    'Sus lunas tienen nombres de personajes de Shakespeare.',
+                    'Tiene 13 anillos oscuros y delgados.',
+                    'Emite muy poco calor interno en comparación con Neptuno.'
+                ],
+                radius: 13, distance: 560, baseSpeed: 0.004, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'uranus'
+            },
+            {
+                id: 'neptuno', name: 'Neptuno', subtitle: 'El Viento Azul',
+                description: 'El planeta más lejano del Sistema Solar. Un mundo azul profundo sacudido por los vientos más veloces del sistema planetario.',
+                type: 'Gigante Gaseoso/Hielo', realRadius: '24,622 km', realDistance: '4,495 millones de km',
+                temp: '-200 °C', dayDuration: '16.1 horas', yearDuration: '165 años', moons: '16 confirmadas',
+                facts: [
+                    'Soporta vientos supersónicos de más de 2,100 km/h.',
+                    'Fue descubierto por cálculos matemáticos antes de ser visto.',
+                    'Tarda 165 años terrestres en dar una vuelta completa al Sol.',
+                    'Su intenso color azul proviene del metano atmosférico.',
+                    'Su luna Tritón orbita en sentido retrógrado.',
+                    'Presiones internas extremas podrían crear lluvias de diamantes.',
+                    'El mediodía en Neptuno parece un atardecer muy oscuro.'
+                ],
+                radius: 13, distance: 635, baseSpeed: 0.003, parentId: 'sun', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'neptune'
+            },
+
+            // LUNAS DEL SISTEMA SOLAR
+            {
+                id: 'luna', name: 'La Luna', subtitle: 'Satélite de la Tierra',
+                description: 'Único satélite de la Tierra. Su gravedad estabiliza nuestro eje y produce las mareas en los océanos.',
+                type: 'Satélite Natural', realRadius: '1,737 km', realDistance: '384,400 km (Tierra)',
+                temp: '-130 °C a 120 °C', dayDuration: '27.3 días', yearDuration: '27.3 días', moons: '0',
+                facts: [
+                    'Siempre muestra la misma cara a la Tierra.',
+                    'Se aleja a un ritmo de 3.8 cm por año de nuestro planeta.',
+                    'Su gravedad es sólo un sexto de la gravedad terrestre.',
+                    'El polvo lunar es abrasivo y huele a pólvora quemada.',
+                    'Las pisadas de los astronautas durarán millones de años.',
+                    'Causa las mareas altas y bajas oceánicas.',
+                    'Se formó tras un impacto masivo de la Tierra con Theia.'
+                ],
+                radius: 4, distance: 24, baseSpeed: 0.06, parentId: 'tierra', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'moon'
+            },
+            {
+                id: 'fobos', name: 'Fobos', subtitle: 'Luna de Marte',
+                description: 'La luna más grande e interna de Marte. Es un cuerpo irregular cubierto de cráteres de impacto.',
+                type: 'Satélite Natural', realRadius: '11.2 km', realDistance: '9,377 km (Marte)',
+                temp: '-40 °C a -112 °C', dayDuration: '7.6 horas', yearDuration: '7.6 horas', moons: '0',
+                facts: [
+                    'Orbita a Marte 3 veces al día debido a su extrema cercanía.',
+                    'Se está acercando a Marte 1.8 metros cada 100 años.',
+                    'Colisionará o se fragmentará formando un anillo dentro de 50 millones de años.',
+                    'Su cráter Stickney ocupa casi la mitad del tamaño de la luna.',
+                    'Su gravedad es tan débil que podrías saltar y salir despedido.',
+                    'No tiene forma esférica; parece una patata espacial.',
+                    'Podría ser un asteroide capturado por la gravedad marciana.'
+                ],
+                radius: 2.5, distance: 16, baseSpeed: 0.08, parentId: 'marte', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            },
+            {
+                id: 'deimos', name: 'Deimos', subtitle: 'Luna de Marte',
+                description: 'La luna más pequeña y exterior de Marte. Posee un aspecto suave debido a que sus cráteres se han rellenado de regolito.',
+                type: 'Satélite Natural', realRadius: '6.2 km', realDistance: '23,460 km (Marte)',
+                temp: '-40 °C', dayDuration: '30.3 horas', yearDuration: '30.3 horas', moons: '0',
+                facts: [
+                    'Tarda unas 30 horas en completar una órbita a Marte.',
+                    'Se está alejando progresivamente del planeta Marte.',
+                    'Desde Marte parece más una estrella brillante que una luna.',
+                    'Su superficie es suave por el polvo espeso que la cubre.',
+                    'Su nombre proviene del dios griego del terror.',
+                    'Es uno de los satélites más pequeños del Sistema Solar.',
+                    'Posee solo dos cráteres con nombre propio: Swift y Voltaire.'
+                ],
+                radius: 2, distance: 24, baseSpeed: 0.04, parentId: 'marte', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            },
+            {
+                id: 'io', name: 'Ío', subtitle: 'Luna de Júpiter',
+                description: 'El mundo con mayor actividad volcánica del Sistema Solar debido a la inmensa marea gravitacional de Júpiter.',
+                type: 'Satélite Galileano', realRadius: '1,821 km', realDistance: '421,700 km (Júpiter)',
+                temp: '-130 °C (Superficie) / 1,300 °C (Volcanes)', dayDuration: '1.75 días', yearDuration: '1.75 días', moons: '0',
+                facts: [
+                    'Tiene más de 400 volcanes activos en constante erupción.',
+                    'Lanza plumas de azufre a más de 500 km de altura en el espacio.',
+                    'Su superficie se renueva continuamente borrando todos los cráteres.',
+                    'La marea gravitacional de Júpiter abulta su suelo hasta 100 metros.',
+                    'Es el mundo más seco de todo el Sistema Solar.',
+                    'Crea intensas auroras en los polos de Júpiter con su plasma.',
+                    'Su color amarillento proviene de sus depósitos de azufre.'
+                ],
+                radius: 3.5, distance: 30, baseSpeed: 0.05, parentId: 'jupiter', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'io'
+            },
+            {
+                id: 'europa', name: 'Europa', subtitle: 'Luna de Júpiter',
+                description: 'Mundo helado con una corteza de hielo liso que cubre un océano global subterráneo con el doble de agua que la Tierra.',
+                type: 'Satélite Galileano', realRadius: '1,560 km', realDistance: '670,900 km (Júpiter)',
+                temp: '-160 °C', dayDuration: '3.5 días', yearDuration: '3.5 días', moons: '0',
+                facts: [
+                    'Alberga un océano líquido gigante oculto bajo su corteza de hielo.',
+                    'Contiene el doble de agua que todos los océanos de la Tierra juntos.',
+                    'Es uno de los mejores candidatos para encontrar vida extraterrestre.',
+                    'Es la luna más lisa de todo el Sistema Solar.',
+                    'Plumas de agua emergen expulsadas al espacio a través de sus grietas.',
+                    'Su superficie está surcada por franjas oscuras llamadas líneas.',
+                    'Recibe constante radiación letal procedente de Júpiter.'
+                ],
+                radius: 3.2, distance: 38, baseSpeed: 0.038, parentId: 'jupiter', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'europa'
+            },
+            {
+                id: 'ganimedes', name: 'Ganímedes', subtitle: 'Luna de Júpiter',
+                description: 'La luna más grande del Sistema Solar. Posee su propio campo magnético interno generado por un núcleo de hierro líquido.',
+                type: 'Satélite Galileano', realRadius: '2,634 km', realDistance: '1,070,400 km (Júpiter)',
+                temp: '-160 °C', dayDuration: '7.15 días', yearDuration: '7.15 días', moons: '0',
+                facts: [
+                    'Es la luna más grande del Sistema Solar, superando a Mercurio.',
+                    'Es la única luna conocida que genera su propio campo magnético.',
+                    'Posee auroras brillantes causadas por su magnetosfera.',
+                    'Tiene un Océano subterráneo profundo bajo capas de hielo.',
+                    'Su superficie presenta zonas antiguas oscuras y zonas jóvenes claras.',
+                    'Su descubrimiento por Galileo arruinó la teoría geocéntrica.',
+                    'Si orbitara al Sol directamente, se clasificaría como un planeta.'
+                ],
+                radius: 4.5, distance: 48, baseSpeed: 0.025, parentId: 'jupiter', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'ganymede'
+            },
+            {
+                id: 'calisto', name: 'Calisto', subtitle: 'Luna de Júpiter',
+                description: 'El objeto con mayor densidad de cráteres de impacto del Sistema Solar. Su superficie no ha cambiado en 4 mil millones de años.',
+                type: 'Satélite Galileano', realRadius: '2,410 km', realDistance: '1,882,700 km (Júpiter)',
+                temp: '-170 °C', dayDuration: '16.7 días', yearDuration: '16.7 días', moons: '0',
+                facts: [
+                    'Tiene el récord de la superficie más antigua y accidentada del Sistema Solar.',
+                    'No experimenta fuerzas de marea destructivas como Ío.',
+                    'Podría tener un océano líquido salado muy bajo la superficie.',
+                    'Prácticamente no ha cambiado en los últimos 4,000 millones de años.',
+                    'Es la luna galileana más alejada de Júpiter.',
+                    'Tiene una atmósfera sumamente delgada de dióxido de carbono.',
+                    'Es el cuerpo celeste con menos variaciones tectónicas de la historia.'
+                ],
+                radius: 4.2, distance: 58, baseSpeed: 0.015, parentId: 'jupiter', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            },
+            {
+                id: 'titan', name: 'Titán', subtitle: 'Luna de Saturno',
+                description: 'Segunda luna más grande. Posee una densidad atmosférica superior a la Tierra con ríos y mares de metano líquido.',
+                type: 'Satélite Natural', realRadius: '2,574 km', realDistance: '1,221,800 km (Saturno)',
+                temp: '-179 °C', dayDuration: '15.9 días', yearDuration: '15.9 días', moons: '0',
+                facts: [
+                    'Es la única luna del Sistema Solar con una atmósfera densa.',
+                    'Tiene ríos, lagos y mares de metano y etano líquido.',
+                    'La presión atmosférica es 50% mayor que la de la Tierra.',
+                    'Podrías volar usando alas de plástico debido a la baja gravedad y densa atmósfera.',
+                    'Su ciclo de metano funciona de forma análoga al ciclo del agua terrestre.',
+                    'Bajo su helada corteza alberga un océano de agua líquida.',
+                    'Es más grande que el planeta Mercurio.'
+                ],
+                radius: 4.4, distance: 42, baseSpeed: 0.028, parentId: 'saturno', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'titan'
+            },
+            {
+                id: 'encelado', name: 'Encélado', subtitle: 'Luna de Saturno',
+                description: 'Mundo brillante y súper helado que dispara géiseres de agua salada al espacio nutriendo los anillos de Saturno.',
+                type: 'Satélite Natural', realRadius: '252 km', realDistance: '238,000 km (Saturno)',
+                temp: '-201 °C', dayDuration: '32.9 horas', yearDuration: '32.9 horas', moons: '0',
+                facts: [
+                    'Refleja casi el 100% de la luz solar por ser puro hielo limpio.',
+                    'Sus géiseres de agua salada expulsan vapor y hielo al espacio.',
+                    'Sus géiseres alimentan directamente el Anillo E de Saturno.',
+                    'Alberga un océano líquido global bajo su superficie de hielo.',
+                    'Posee fuentes hidrotermales en el fondo de su océano.',
+                    'Sus grietas polares se conocen cariñosamente como "rayas de tigre".',
+                    'Es uno de los lugares más prometedores para buscar vida microbiológica.'
+                ],
+                radius: 2.8, distance: 30, baseSpeed: 0.045, parentId: 'saturno', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'enceladus'
+            },
+            {
+                id: 'titania', name: 'Titania', subtitle: 'Luna de Urano',
+                description: 'La luna más grande de Urano, compuesta por cantidades similares de hielo de agua y roca con enormes cañones.',
+                type: 'Satélite Natural', realRadius: '788 km', realDistance: '435,900 km (Urano)',
+                temp: '-203 °C', dayDuration: '8.7 días', yearDuration: '8.7 días', moons: '0',
+                facts: [
+                    'Es la luna más grande de las 28 que orbitan Urano.',
+                    'Está surcada por un sistema gigantesco de cañones y fallas.',
+                    'Recibe su nombre de la reina de las hadas de Shakespeare.',
+                    'Está compuesta en un 50% por hielo de agua y 50% roca.',
+                    'Su mayor cañón es el rupes Messina, de 1,500 km de largo.',
+                    'Presenta evidencias de actividad criovolcánica en el pasado.',
+                    'Tiene una tenue atmósfera de CO2.'
+                ],
+                radius: 3.2, distance: 28, baseSpeed: 0.035, parentId: 'urano', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            },
+            {
+                id: 'oberon', name: 'Oberón', subtitle: 'Luna de Urano',
+                description: 'La luna principal más distante de Urano. Su superficie está muy craterizada y cubierta de un misterioso material oscuro.',
+                type: 'Satélite Natural', realRadius: '761 km', realDistance: '583,500 km (Urano)',
+                temp: '-203 °C', dayDuration: '13.5 días', yearDuration: '13.5 días', moons: '0',
+                facts: [
+                    'Es la segunda luna más grande de Urano.',
+                    'Posee una montaña altísima de más de 11 km de elevación.',
+                    'Sus cráteres tienen fondos cubiertos por un material muy oscuro.',
+                    'Su superficie es la más antigua entre las lunas de Urano.',
+                    'Nombre en honor al rey de las hadas de Shakespeare.',
+                    'Orbita casi completamente fuera de la magnetosfera de Urano.',
+                    'No muestra evidencias de actividad tectónica reciente.'
+                ],
+                radius: 3.0, distance: 36, baseSpeed: 0.022, parentId: 'urano', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            },
+            {
+                id: 'triton', name: 'Tritón', subtitle: 'Luna de Neptuno',
+                description: 'Luna gigante que gira en sentido opuesto a la rotación de Neptuno. Tiene géiseres activos de nitrógeno helado.',
+                type: 'Satélite Natural', realRadius: '1,353 km', realDistance: '354,800 km (Neptuno)',
+                temp: '-235 °C', dayDuration: '5.8 días', yearDuration: '5.8 días', moons: '0',
+                facts: [
+                    'Es la única gran luna que orbita en sentido retrógrado (al revés).',
+                    'Es uno de los objetos más fríos registrados en el Sistema Solar (-235 °C).',
+                    'Posee géiseres activos que disparan gas nitrógeno al cielo.',
+                    'Fue un planeta enano del Cinturón de Kuiper capturado por Neptuno.',
+                    'Su superficie parece la piel de un melón cantalupe.',
+                    'Su órbita decae lentamente; acabará destruido por Neptuno.',
+                    'Posee una atmósfera delgada de nitrógeno.'
+                ],
+                radius: 3.8, distance: 28, baseSpeed: 0.032, parentId: 'neptuno', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'triton'
+            },
+            {
+                id: 'proteo', name: 'Proteo', subtitle: 'Luna de Neptuno',
+                description: 'El segundo satélite más grande de Neptuno. Es uno de los cuerpos no esféricos más grandes del Sistema Solar.',
+                type: 'Satélite Natural', realRadius: '210 km', realDistance: '117,600 km (Neptuno)',
+                temp: '-223 °C', dayDuration: '1.12 días', yearDuration: '1.12 días', moons: '0',
+                facts: [
+                    'Tiene el límite exacto de tamaño para no haberse convertido en esfera.',
+                    'Es extremadamente oscuro; refleja sólo el 6% de la luz.',
+                    'Su cráter Pharos tiene un diámetro de más de 230 km.',
+                    'No fue descubierto por telescopio sino por la sonda Voyager 2 en 1989.',
+                    'Orbita muy cerca del ecuador de Neptuno.',
+                    'Recibe su nombre del dios marino griego que cambiaba de forma.',
+                    'Está repleto de facetas casi planas que le dan aspecto poliédrico.'
+                ],
+                radius: 2.4, distance: 20, baseSpeed: 0.05, parentId: 'neptuno', angle: Math.random() * Math.PI * 2, x: 0, y: 0, typeDraw: 'generic_moon'
+            }
+        ];
+
+        // Estrellas de fondo vectoriales
+        const stars = [];
+        for (let i = 0; i < 400; i++) {
+            stars.push({
+                x: Math.random() * 3000 - 1500,
+                y: Math.random() * 3000 - 1500,
+                radius: Math.random() * 2,
+                alpha: Math.random() * 0.8 + 0.2
+            });
+        }
+
+        function selectBody(body) {
+            selectedTarget = body;
+            infoTitle.textContent = body.name;
+            infoSubtitle.textContent = body.subtitle;
+            infoDesc.textContent = body.description;
+            statType.textContent = body.type;
+            statRadius.textContent = body.realRadius;
+            statDistance.textContent = body.realDistance;
+            statTemp.textContent = body.temp;
+            statDay.textContent = body.dayDuration;
+            statYear.textContent = body.yearDuration;
+            statMoons.textContent = body.moons;
+
+            factsContainer.innerHTML = '';
+            body.facts.forEach((fact, index) => {
+                const factCard = document.createElement('div');
+                factCard.className = 'fact-card-item';
+                
+                const numberBadge = document.createElement('div');
+                numberBadge.className = 'fact-number';
+                numberBadge.textContent = index + 1;
+                
+                const factText = document.createElement('div');
+                factText.textContent = fact;
+                
+                factCard.appendChild(numberBadge);
+                factCard.appendChild(factText);
+                factsContainer.appendChild(factCard);
+            });
+
+            infoPanel.classList.add('visible');
+        }
+
+        function deselectBody() {
+            selectedTarget = null;
+            infoPanel.classList.remove('visible');
+        }
+
+        closeBtn.addEventListener('click', deselectBody);
+
+        speedRange.addEventListener('input', (e) => {
+            globalSpeed = parseFloat(e.target.value);
+            speedValue.textContent = globalSpeed.toFixed(1);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Reanudar' : 'Pausar';
+            pauseBtn.style.background = isPaused ? '#ef4444' : '#facc15';
+        });
+
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseClickX = event.clientX - rect.left;
+            const mouseClickY = event.clientY - rect.top;
+
+            for (let body of celestialBodies) {
+                const dist = Math.hypot(mouseClickX - body.screenX, mouseClickY - body.screenY);
+                if (dist <= (body.radius * zoom) + 6) {
+                    selectBody(body);
+                    return;
+                }
+            }
+        });
+
+        // Dibujo vectorial especializado por cuerpo celeste
+        function drawPlanetIllustration(ctx, body, x, y, r) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            switch(body.typeDraw) {
+                case 'sun':
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath(); ctx.arc(0, 0, r + 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath(); ctx.arc(-r*0.3, -r*0.3, r*0.25, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'mercury':
+                    ctx.fillStyle = '#9ca3af'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#6b7280'; ctx.beginPath(); ctx.arc(-r*0.3, r*0.2, r*0.25, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'venus':
+                    ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.ellipse(0, -r*0.3, r*0.8, r*0.25, 0, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'earth':
+                    ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(-r*0.3, -r*0.2, r*0.45, 0, Math.PI * 2); ctx.arc(r*0.4, r*0.3, r*0.35, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'mars':
+                    ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#c2410c'; ctx.beginPath(); ctx.arc(r*0.2, -r*0.2, r*0.35, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'jupiter':
+                    ctx.fillStyle = '#d97706'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#b45309'; ctx.fillRect(-r, -r*0.4, r*2, r*0.3);
+                    ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.ellipse(r*0.3, r*0.3, r*0.35, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+                    break;
+
+                case 'saturn':
+                    ctx.strokeStyle = '#fde047'; ctx.lineWidth = Math.max(1.5, 3 * zoom);
+                    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.8, r * 0.6, 0.2, Math.PI, Math.PI * 2); ctx.stroke();
+                    ctx.fillStyle = '#eab308'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#fde047'; ctx.lineWidth = Math.max(1.5, 3 * zoom);
+                    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.8, r * 0.6, 0.2, 0, Math.PI); ctx.stroke();
+                    break;
+
+                case 'uranus':
+                    ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'neptune':
+                    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'moon':
+                case 'generic_moon':
+                    ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#64748b'; ctx.beginPath(); ctx.arc(-r*0.2, r*0.1, r*0.3, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'io':
+                    ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(r*0.2, -r*0.2, r*0.25, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'europa':
+                case 'enceladus':
+                    ctx.fillStyle = '#e0f2fe'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-r*0.5, -r*0.3); ctx.lineTo(r*0.5, r*0.3); ctx.stroke();
+                    break;
+
+                case 'ganymede':
+                case 'titan':
+                    ctx.fillStyle = '#d97706'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.arc(-r*0.3, -r*0.2, r*0.4, 0, Math.PI * 2); ctx.fill();
+                    break;
+
+                case 'triton':
+                    ctx.fillStyle = '#a5f3fc'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#0284c7'; ctx.beginPath(); ctx.arc(r*0.3, r*0.2, r*0.3, 0, Math.PI * 2); ctx.fill();
+                    break;
+            }
+
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.fillStyle = '#0b1329';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2 + panX;
+            const centerY = canvas.height / 2 + panY;
+
+            // Dibujar fondo estrellado
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(star => {
+                ctx.globalAlpha = star.alpha;
+                ctx.beginPath();
+                ctx.arc(star.x * zoom + centerX * 0.1, star.y * zoom + centerY * 0.1, star.radius * Math.max(0.5, zoom * 0.5), 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Actualizar ángulos orbitales
+            celestialBodies.forEach(body => {
+                if (!isPaused && body.baseSpeed > 0) {
+                    body.angle += body.baseSpeed * globalSpeed;
+                }
+            });
+
+            // PASO 1: Calcular posiciones jerárquicas
+            celestialBodies.forEach(body => {
+                if (body.id === 'sun') {
+                    body.x = centerX;
+                    body.y = centerY;
+                } else if (body.parentId === 'sun') {
+                    body.x = centerX + Math.cos(body.angle) * body.distance * zoom;
+                    body.y = centerY + Math.sin(body.angle) * body.distance * zoom;
+                } else if (body.parentId) {
+                    const parent = celestialBodies.find(b => b.id === body.parentId);
+                    if (parent) {
+                        body.x = parent.x + Math.cos(body.angle) * body.distance * zoom;
+                        body.y = parent.y + Math.sin(body.angle) * body.distance * zoom;
+                    }
+                }
+                body.screenX = body.x;
+                body.screenY = body.y;
+            });
+
+            // PASO 2: Dibujar Órbitas Punteadas
+            celestialBodies.forEach(body => {
+                if (body.distance > 0) {
+                    let orbitCenterX = centerX;
+                    let orbitCenterY = centerY;
+
+                    if (body.parentId && body.parentId !== 'sun') {
+                        const parent = celestialBodies.find(b => b.id === body.parentId);
+                        if (parent) {
+                            orbitCenterX = parent.x;
+                            orbitCenterY = parent.y;
+                        }
+                    }
+
+                    const isMoon = body.parentId !== 'sun';
+                    ctx.strokeStyle = (selectedTarget === body) ? '#facc15' : (isMoon ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.12)');
+                    ctx.lineWidth = (selectedTarget === body) ? 2 : 1;
+                    ctx.setLineDash(isMoon ? [2, 4] : [4, 6]);
+                    ctx.beginPath();
+                    ctx.arc(orbitCenterX, orbitCenterY, body.distance * zoom, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+
+            // PASO 3: Dibujar Cuerpos Celestes
+            celestialBodies.forEach(body => {
+                const x = body.x;
+                const y = body.y;
+                const currentRadius = body.radius * zoom;
+
+                drawPlanetIllustration(ctx, body, x, y, currentRadius);
+
+                // Aro de selección
+                if (selectedTarget === body) {
+                    ctx.strokeStyle = '#facc15';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, currentRadius + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Nombre flotante
+                const isMoon = body.parentId && body.parentId !== 'sun';
+                if ((!isMoon && zoom > 0.4) || (isMoon && zoom > 0.8)) {
+                    ctx.fillStyle = isMoon ? '#93c5fd' : '#ffffff';
+                    ctx.font = `600 ${Math.max(10, (isMoon ? 10 : 12) * Math.min(zoom, 1.3))}px sans-serif`;
+                    ctx.fillText(body.name, x + currentRadius + 6, y + 4);
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
